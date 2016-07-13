@@ -1,8 +1,8 @@
 # Snorby
 
-* [github.com/Snorby/snorby](http://github.com/Snorby/snorby/)
-* [github.com/Snorby/snorby/issues](http://github.com/Snorby/snorby/issues)
-* [github.com/Snorby/snorby/wiki](http://github.com/Snorby/snorby/wiki)
+* [github.com/Flashdown/snorby](http://github.com/Snorby/snorby/)
+* [github.com/Flashdown/snorby/issues](http://github.com/Snorby/snorby/issues)
+* [github.com/Flashdown/snorby/wiki](http://github.com/Snorby/snorby/wiki)
 * irc.freenode.net #snorby
 
 ## Description
