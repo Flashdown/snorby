@@ -15,7 +15,7 @@ Snorby is a ruby on rails web application for network security monitoring that i
 * Ruby >= 1.9.2
 * Rails >= 3.0.0
 
-## Install Debian Wheezy using an already SSL configured Apache2 (you can also use another webserver) 
+## Install Workflow for Debian Wheezy using an already SSL configured Apache2 (you can also use another webserver) 
 * Installing required software:
 `$ apt-get install imagemagick ruby git`
 `$ apt-get install rails`
