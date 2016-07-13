@@ -15,41 +15,125 @@ Snorby is a ruby on rails web application for network security monitoring that i
 * Ruby >= 1.9.2
 * Rails >= 3.0.0
 
-## Install
+## Install Debian Wheezy using an already SSL configured Apache2 (you can also use another webserver) 
+* Installing required software:
+`$ apt-get install imagemagick ruby git`
+`$ apt-get install rails`
 
-* Get Snorby from the download section or use the latest edge release via git.
+`$ git clone http://github.com/Flashdown/snorby.git`
+* Move snorby folder to www or better make its contents to be in the www folder
 
-	`git clone git://github.com/Snorby/snorby.git`
+* Install bundler
+ `$ gem install bundler`
 
-* Move into de snorby Directory
+* Now switch to a less privileged account (make sure your user has sufficient permissions on the snorby folder I used chown www-data:www-data /var/www/snorby -R ), otherwise the application will be broken for non root users ;)
 
-	`cd snorby`
+* Switch into snorby dir
+* Add yourself temporary in the sudoers list (needed by bundle and should be removed after the installation is done)
+`$ visudo`
+Add: `www-data  ALL=(ALL:ALL) ALL`
 
-* Install Gem Dependencies  (make sure you have bundler installed: `gem install bundler`)
+* Install Gem Dependencies
+`$ bundle install --without development`
 
-	`$ bundle install`
+* Enter your users password for using sudo, when asked
+`$ sudo gem update --system`
+
+* Copy Default Configs and edit them
+`$ cp ./config/database.yml.example ./config/database.yml`
+* Enter the DB credentials.
+`$ vim ./config/database.yml`
+
+`$ cp config/snorby_config.yml.example config/snorby_config.yml`
+`$vim ./config/snorby_config.yml`
+
+* Adjust the following lines so that they match in snorby_config.yml
+```
+ domain: 'host.your.domain.com'
+ ssl: true
+ mailer_sender: 'snorby@vm-bcr-snort'
+ wkhtmltopdf: /usr/bin/wkhtmltopdf
+```
+
+* Mail configuration can be configured here, can be done later: "config/initializers/mail_config.rb"
+
+`$ sudo gem install rails bundler passenger`
+`$ sudo apt-get install libcurl4-openssl-dev apache2-threaded-dev libapr1-dev libaprutil1-dev`
+
+`$ sudo passenger-install-apache2-module`
+* Only select ruby
+* Add to end of your apache configuration file /etc/apache2/apache2.conf
+```
+  LoadModule passenger_module /var/lib/gems/2.1.0/gems/passenger-5.0.29/buildout/apache2/mod_passenger.so
+   <IfModule mod_passenger.c>
+     PassengerRoot /var/lib/gems/2.1.0/gems/passenger-5.0.29
+     PassengerDefaultRuby /usr/bin/ruby2.1
+   </IfModule>
+```
+* Restart Apache2
+`$ service apache2 restart`
+
+* Now you can remove the user www-data from the sudoers list again (Run as root and remove the previous added lines for user www-data) `$ visudo`
+
+* Run the Snorby Setup by running the following as root (adjust /var/www/snorby to thatever your webroot containing the snorby files is)
+`$ su -c "cd /var/www/snorby && RAILS_ENV=production /usr/local/bin/bundle exec rake snorby:setup" -s /bin/bash www-data`
+
+* Create Crontabs that will start Snorby and the Workers automatically each time the system has been rebooted:
+`$ @reboot su -c "bundle exec rails server -e production" -s /bin/bash www-data`
+`$ @reboot su -c "cd /var/www/snorby && RAILS_ENV=production /usr/local/bin/bundle exec ruby script/delayed_job start" -s /bin/bash www-data`
+
+* Now just reboot once and the Snorby webinterface should be available on the port you have configured in your apache2 SSL site config.
+
+* Default User Credentials
+
+	* E-mail: **snorby@example.com**
+	* Password: **snorby** 
+
+
+## Fixing PDFExport not working:
+Error:
+/var/lib/gems/2.1.0/gems/actionpack-3.2.22/lib/action_dispatch/http/mime_type.rb:102: warning: already initialized constant Mime::PDF
+/var/lib/gems/2.1.0/gems/actionpack-3.2.22/lib/action_dispatch/http/mime_type.rb:102: warning: previous definition of PDF was here
+
+# Fixing the bug in Snorby, since newer Ruby versions already register that Mime Type:
+* Change into the home directory of the user you are using for Snorby since there .bundle directory is located
+* then run the following:
+`$ sed -i 's/\(^.*\)\(Mime::Type.register.*application\/pdf.*$\)/\1if Mime::Type.lookup_by_extension(:pdf) != "application\/pdf"\n\1  \2\n\1end/' ./.bundle/ruby/2.1.0/ezprint-*/lib/ezprint/railtie.rb`
+
+## Create suitable wkhtmltopdf package for Debian since the one from the repo was build using unpatched qt and therefore won't work in the way Snorby needs it to
+
+* Downloaded and created a deb file manually: 
+`$ apt-get remove --purge wkhtmltopdf`
+`$ wget http://download.gna.org/wkhtmltopdf/0.12/0.12.3/wkhtmltox-0.12.3_linux-generic-amd64.tar.xz`
+
+Then I have extracted the archive which contains the files and directorie structures, I created a new folder in it called usr and moved every folder into it so that the path will be usr/bin instead of bin and so on.
+Then I created a folder called DEBIAN in the same folder as the usr folder is, there IÄve created the "control" and "conffiles" in the DEBIAN folder. I leaved the conffiles file empty so I just used touch.
+for the control file and for the creation of the deb file I followed this guide: http://www.sj-vs.net/creating-a-simple-debian-deb-package-based-on-a-directory-structure/
+
+But I also used apt-cache show wkhtmltopdf to get more and better stuff for the control file. then I have gone one directory up called wkhtmltopdf which now contain the folder usr and DEBIAN. and executed this dpkg-deb --build wkhtmltopdf
+* now install your package
+`$dpkg -i wkhtmltopdf.deb`
+
+
+* How to open the rails console:
+`$ su -c "cd /var/www/snorby && RAILS_ENV=production /usr/local/bin/bundle exec rails console" -s /bin/bash www-data`
+
+* When configuring mail reports using the console and the following commands for testing is very useful
+
+`irb(main):001:0> ReportMailer.daily_report.deliver`
+		 `ReportMailer.weekly_report.deliver`
+		 `ReportMailer.monthly_report.deliver`
+
+## Updating Snorby
+
+* In the root Snorby directory type the following command:
+	`git pull origin master`
 	
-	* NOTE: If you get missing gem issues in production use `bundle install --path vendor/cache`
-
-	* If your system gems are updated beyond the gemfile.lock you should use as an example `bundle exec rake snorby:setup` 
-
-	* If running `bundle exec {app}` is painful you can safely install binstubs by `bundle install --binstubs` 
+* Once the pull has competed successfully run the Snorby update rake task:
+`$ su -c "cd /var/www/snorby && RAILS_ENV=production /usr/local/bin/bundle exec rake snorby:update" -s /bin/bash www-data`
 	
-* Install wkhtmltopdf
 
-	`pdfkit --install-wkhtmltopdf # If this fails - visit http://wkhtmltopdf.org/ for more information`
-
-* Run The Snorby Setup
-
-	`rake snorby:setup`
-	
-	* NOTE: If you get warning such as "already initialized constant PDF", you can fix it by running these commands :
-
-	```
-	sed -i 's/\(^.*\)\(Mime::Type.register.*application\/pdf.*$\)/\1if Mime::Type.lookup_by_extension(:pdf) != "application\/pdf"\n\1  \2\n\1end/' vendor/cache/ruby/*.*.*/bundler/gems/ezprint-*/lib/ezprint/railtie.rb
-	sed -i 's/\(^.*\)\(Mime::Type.register.*application\/pdf.*$\)/\1if Mime::Type.lookup_by_extension(:pdf) != "application\/pdf"\n\1  \2\n\1end/' vendor/cache/ruby/*.*.*/gems/actionpack-*/lib/action_dispatch/http/mime_types.rb
-	sed -i 's/\(^.*\)\(Mime::Type.register.*application\/pdf.*$\)/\1if Mime::Type.lookup_by_extension(:pdf) != "application\/pdf"\n\1  \2\n\1end/' vendor/cache/ruby/*.*.*/gems/railties-*/guides/source/action_controller_overview.textile
-	```
+## Install OLD (only left what may could be usefull)
 
 * Edit The Snorby Configuration File
 
