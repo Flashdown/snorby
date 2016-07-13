@@ -51,7 +51,7 @@ Add: `www-data  ALL=(ALL:ALL) ALL`
 ```
  domain: 'host.your.domain.com'
  ssl: true
- mailer_sender: 'snorby@vm-bcr-snort'
+ mailer_sender: 'snorby@example.com'
  wkhtmltopdf: /usr/bin/wkhtmltopdf
 ```
 
